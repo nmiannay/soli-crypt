@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "bip39": "^3.0.3",
+    "shamirs-secret-sharing": "^1.0.1"
+  }
+}

@@ -1,0 +1,10 @@
+# docker-compose build app
+version: '3.4'
+
+services:
+  app:
+    build:
+      context: .
+    volumes:
+      - .:/usr/src/app
+    command: 'sh'

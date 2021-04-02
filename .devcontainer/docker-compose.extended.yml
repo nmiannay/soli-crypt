@@ -1,0 +1,7 @@
+version: '3.4'
+
+services:
+  app:
+    volumes:
+      - ~/.ssh:/root/.ssh-localhost
+    command: '/bin/sh -c "while sleep 1000; do :; done"'
