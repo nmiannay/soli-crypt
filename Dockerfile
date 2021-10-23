@@ -9,8 +9,11 @@ RUN apk update && apk add --virtual build-dependencies \
     git
 
 WORKDIR /usr/src/app
+ADD ./package.json .
+ADD ./yarn.lock .
+RUN yarn install
 
-COPY . .
+ADD aliases.sh /etc/profile.d/
+ADD . .
 
-CMD [ "sh" ]
-# docker run -it --rm --name my-running-script -v "$PWD":/usr/src/myapp -w /usr/src/myapp python:3
+CMD [ "sh", "-l" ]

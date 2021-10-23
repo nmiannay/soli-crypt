@@ -7,4 +7,5 @@ services:
       context: .
     volumes:
       - .:/usr/src/app
+      - /usr/src/app/node_modules/
     command: 'sh'

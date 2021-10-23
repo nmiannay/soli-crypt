@@ -1,0 +1,10 @@
+# Ignore everything
+**
+
+# Allow files and directories
+!aliases.sh
+!package.json
+!yarn.lock
+!words.json
+!scripts
+!lib
