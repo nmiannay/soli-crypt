@@ -16,4 +16,4 @@ RUN yarn install
 ADD aliases.sh /etc/profile.d/
 ADD . .
 
-CMD [ "sh", "-l" ]
+ENTRYPOINT [ "/bin/sh", "-l", "-c" ]
