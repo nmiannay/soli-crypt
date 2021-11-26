@@ -1,6 +1,6 @@
 const decrypt = require('../lib/decrypt');
 const yargs = require('yargs');
-const fs = require('fs').promises;
+const { promises: fs , createReadStream, createWriteStream } = require('fs');
 
 const argv = yargs
   .option('wordlist', {
@@ -37,19 +37,20 @@ const argv = yargs
 
 (async function main() {
   const privateKey = await fs.readFile(argv['private-key']);
-  const encryptedData = argv._[0] || await fs.readFile(argv.file);
+  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
   const outputPath = (argv.output || `${argv.file || ''}.plain`);
+  const writeStream = createWriteStream(outputPath);
   const splits = await Promise.all(
     argv.share.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
   );
-  const plainData = decrypt(
-    encryptedData,
+
+  await decrypt(
+    readStream,
+    writeStream,
     {
       wordlist: require(argv.wordlist),
       privateKey,
       splits,
     }
   );
-
-  await fs.writeFile(outputPath, plainData);
 })();
