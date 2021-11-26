@@ -1,6 +1,8 @@
 const encrypt = require('../lib/encrypt');
 const yargs = require('yargs');
-const fs = require('fs').promises;
+const { promises: fs , createReadStream, createWriteStream } = require('fs');
+const { Readable } = require("stream");
+const { HEADER_LENGTH } = require('../lib/constants');
 
 const argv = yargs
   .option('public-key', {
@@ -24,10 +26,13 @@ const argv = yargs
   .argv;
 
 (async function main() {
+  const outputPath = argv.output || `${argv.file || ''}.crypted`;
   const publicKey = await fs.readFile(argv['public-key']);
-  const plainData = argv._[0] || await fs.readFile(argv.file);
-  const encryptedData = encrypt(plainData, publicKey);
-  const outputPath = (argv.output || `${argv.file || ''}.crypted`);
+  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
+  const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
+  const header = await encrypt(readStream, writeStream, publicKey);
+  const fd = await fs.open(outputPath, 'r+');
 
-  await fs.writeFile(outputPath, encryptedData);
+  await fd.write(header, 0);
+  await fd.close();
 })();
