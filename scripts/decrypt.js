@@ -1,6 +1,9 @@
-const decrypt = require('../lib/decrypt');
+const path = require('path');
 const yargs = require('yargs');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
+const decrypt = require('../lib/decrypt');
+const { DEFAULT_PLAIN_SUFFIX, DEFAULT_WORDS_LIST_PATH } = require('../lib/constants');
+const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
@@ -8,7 +11,7 @@ const { promises: fs , createReadStream, createWriteStream } = require('fs');
     alias: 'w',
     description: 'The path to world list used to memoize passphrase',
     type: 'string',
-    default: '../words.json',
+    default: DEFAULT_WORDS_LIST_PATH,
     coerce: require,
   })
   .option('private-key', {
@@ -33,25 +36,34 @@ const { promises: fs , createReadStream, createWriteStream } = require('fs');
     description: 'The path to share file',
     type: 'array',
     required: true,
+    coerce: async (splits) => await Promise.all(
+      splits.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
+    ),   
+  })
+  .option('suffix', {
+    description: 'The suffix added to encrypted file',
+    type: 'string',
+    default: DEFAULT_PLAIN_SUFFIX,
   })
   .help()
   .alias('help', 'h')
   .argv;
 
-  const outputPath = (argv.output || `${argv.file || ''}.plain`);
-  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
-  const writeStream = createWriteStream(outputPath);
-  const splits = await Promise.all(
-    argv.share.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
-  );
+  const outputFolderPath = await getOutputFolderPath(argv.file, argv.output, argv.suffix);
 
-  await decrypt(
-    readStream,
-    writeStream,
-    {
+  await walk(argv.file, async (file) => {
+    const outputPath = getOutputFilePath(outputFolderPath, file, argv);
+
+    if (outputFolderPath !== null) { // create directory structure
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    }
+
+    await decrypt({
+      readStream: createReadStream(file),
+      writeStream: createWriteStream(outputPath),
       wordlist: argv.wordlist,
       privateKey: argv['private-key'],
-      splits,
-    }
-  );
-})();
+      splits: argv.share,
+    });
+  });
+})().catch(console.error);

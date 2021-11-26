@@ -1,8 +1,9 @@
 const yargs = require('yargs');
+const path = require('path');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
-const { Readable } = require("stream");
-const { HEADER_LENGTH } = require('../lib/constants');
+const { HEADER_LENGTH, DEFAULT_ENCRYPT_SUFFIX } = require('../lib/constants');
 const encrypt = require('../lib/encrypt');
+const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
@@ -15,7 +16,7 @@ const encrypt = require('../lib/encrypt');
   })
   .option('file', {
     alias: 'f',
-    description: 'The path to file to encrypt',
+    description: 'The path to file or folder to encrypt',
     type: 'string',
   })
   .option('output', {
@@ -23,16 +24,30 @@ const encrypt = require('../lib/encrypt');
     description: 'The path to store generated file',
     type: 'string',
   })
+  .option('suffix', {
+    description: 'The suffix added to encrypted file',
+    type: 'string',
+    default: DEFAULT_ENCRYPT_SUFFIX,
+  })
   .help()
   .alias('help', 'h')
   .argv;
 
-  const outputPath = argv.output || `${argv.file || ''}.crypted`;
-  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
-  const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
-  const header = await encrypt(readStream, writeStream, argv['public-key']);
-  const fd = await fs.open(outputPath, 'r+');
+  const outputFolderPath = await getOutputFolderPath(argv.file, argv.output, argv.suffix);
 
-  await fd.write(header, 0);
-  await fd.close();
+  await walk(argv.file, async (file) => {
+    const outputPath = getOutputFilePath(outputFolderPath, file, argv);
+
+    if (outputFolderPath !== null) { // create directory structure
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    }
+
+    const readStream = createReadStream(file);
+    const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
+    const header = await encrypt(readStream, writeStream, argv['public-key']);
+    const fd = await fs.open(outputPath, 'r+');
+
+    await fd.write(header, 0);
+    await fd.close();
+  });
 })();
