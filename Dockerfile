@@ -5,8 +5,7 @@ RUN apk update && apk add --virtual build-dependencies \
     build-base \
     autoconf \
     automake \
-    gcc \
-    git
+    gcc
 
 WORKDIR /usr/src/app
 ADD ./package.json .

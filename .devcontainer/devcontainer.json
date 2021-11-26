@@ -1,14 +1,13 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details or
-// https://aka.ms/vscode-dev-containers/definitions for sample configurations.
 {
-	"dockerComposeFile": [
-      "../docker-compose.yml",
-      "docker-compose.extended.yml"
-    ],
-	"service": "app",
+	"context": "..",
+	"dockerFile": "Dockerfile",
 	"workspaceFolder": "/usr/src/app",
+	"mounts": [
+		"source=${localWorkspaceFolder},target=/usr/src/app,type=bind,consistency=delegated",
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" 
+	],
 	"extensions": [
 		"dbaeumer.vscode-eslint"
 	],
-	"postCreateCommand": "mkdir -p ~/.ssh && cp -r ~/.ssh-localhost/* ~/.ssh && chmod 700 ~/.ssh && chmod 600 ~/.ssh/*"
+	"postCreateCommand": "mkdir -p ~/.ssh && cp -r ~/.ssh-localhost/* ~/.ssh && chmod 700 ~/.ssh && chmod 600 ~/.ssh/*",
 }
