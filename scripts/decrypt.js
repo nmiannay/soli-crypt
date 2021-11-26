@@ -2,18 +2,21 @@ const decrypt = require('../lib/decrypt');
 const yargs = require('yargs');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
 
-const argv = yargs
+(async function main() {
+  const argv = await yargs
   .option('wordlist', {
     alias: 'w',
     description: 'The path to world list used to memoize passphrase',
     type: 'string',
     default: '../words.json',
+    coerce: require,
   })
   .option('private-key', {
     alias: 'k',
     description: 'The path to private key',
     type: 'string',
-    required: true
+    required: true,
+    coerce: async (path) => await fs.readFile(path),
   })
   .option('file', {
     alias: 'f',
@@ -35,10 +38,8 @@ const argv = yargs
   .alias('help', 'h')
   .argv;
 
-(async function main() {
-  const privateKey = await fs.readFile(argv['private-key']);
-  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
   const outputPath = (argv.output || `${argv.file || ''}.plain`);
+  const readStream = argv._[0] ? Readable.from([argv._[0]]) : createReadStream(argv.file);
   const writeStream = createWriteStream(outputPath);
   const splits = await Promise.all(
     argv.share.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
@@ -48,8 +49,8 @@ const argv = yargs
     readStream,
     writeStream,
     {
-      wordlist: require(argv.wordlist),
-      privateKey,
+      wordlist: argv.wordlist,
+      privateKey: argv['private-key'],
       splits,
     }
   );

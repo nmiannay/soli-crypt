@@ -8,6 +8,7 @@ const argv = yargs
     description: 'The path to world list used to memoize passphrase',
     type: 'string',
     default: '../words.json',
+    coerce: require
   })
   .option('shares', {
     alias: 's',
@@ -43,7 +44,7 @@ const argv = yargs
 
 (async function main() {
   const { publicKey, privateKey, splits } = await generateKeys({
-    wordlist: require(argv.wordlist),
+    wordlist: argv.wordlist,
     shares: argv.shares,
     threshold: Math.min(argv.threshold, argv.shares),
     keySize: argv.keySize
