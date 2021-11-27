@@ -2,63 +2,82 @@ const path = require('path');
 const yargs = require('yargs');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
 const decrypt = require('../lib/decrypt');
-const { DEFAULT_PLAIN_SUFFIX, DEFAULT_WORDS_LIST_PATH } = require('../lib/constants');
+const { DEFAULT_PLAIN_SUFFIX, DEFAULT_WORDLIST_PATH } = require('../lib/constants');
 const { walk, getOutputFilePath, configParser } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
-  .option('wordlist', {
-    alias: 'w',
-    description: 'The path to world list used to memoize passphrase',
-    type: 'string',
-    default: DEFAULT_WORDS_LIST_PATH,
-    coerce: configParser,
-  })
+  .usage('$0 -k <private-key> -s <memo-1> -s <memo-2> <file> [...<file>]\n\nDecrypt a file or folder')
   .option('private-key', {
     alias: 'k',
-    description: 'The path to private key',
+    description: 'Path to private key',
     type: 'string',
     required: true,
-    coerce: fs.readFile,
-  })
-  .option('file', {
-    alias: 'f',
-    description: 'Paths to file or folder to encrypt',
-    type: 'array',
-    required: true,
-  })
-  .option('output', {
-    alias: 'o',
-    description: 'The path to store generated file',
-    type: 'string',
+    demandOption: true,
+    coerce: async (key) => key ? fs.readFile(key).catch(err => { throw new Error(`Unable to open private key.\n${err.message}`); }) : key,
   })
   .option('share', {
-    alias: '-s',
+    alias: 's',
     description: 'Paths to share file',
     type: 'array',
     required: true,
+    demandOption: true,
     coerce: async (splits = []) => Promise.all(
       splits.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
     ),   
   })
+  .option('output', {
+    alias: 'o',
+    description: 'Path to store generated file',
+    type: 'string',
+  })
   .option('suffix', {
-    description: 'The suffix added to encrypted file',
+    description: 'Suffix added to decrypted file',
     type: 'string',
     default: DEFAULT_PLAIN_SUFFIX,
   })
+  .option('wordlist', {
+    alias: 'w',
+    description: 'Path to worldlist used to memoize passphrase',
+    type: 'string',
+    default: DEFAULT_WORDLIST_PATH,
+    coerce: configParser,
+  })
   .option('config', {
     alias: 'c',
-    description: 'The path to config file',
+    description: 'Path to config file',
     config: true,
     configParser: configPath => configParser(configPath).decrypt || {}
   })
   .help()
   .alias('help', 'h')
-  .argv;
+  .version(false)
+  .strictOptions()
+  .check(async (argv) => {
+    if (!argv._.length && process.stdin.isTTY) {
+      throw new Error('You must give at least 1 file');
+    } else if (!process.stdin.isTTY && !await fs.lstat(argv.output).then(d => d.isFile()).catch((e) => e.code === 'ENOENT')) {
+      throw new Error('Output must be a file when used with stdin');
+    }
+    return true;
+  })
+  .argv
+
+  if (!process.stdin.isTTY) {
+    await fs.mkdir(path.dirname(argv.output), { recursive: true }); // create directory structure
+
+    return decrypt({
+      readStream: process.stdin,
+      writeStream: createWriteStream(argv.output),
+      wordlist: argv.wordlist,
+      privateKey: argv['private-key'],
+      splits: argv.share,
+    });
+  }
 
   const outputIsDir = argv.output && await fs.lstat(argv.output).then(d => d.isDirectory()).catch(() => false);
 
-  return Promise.all(argv.file.map(async (fileOrDirectory) => {
+  return Promise.all(argv._.map(async (fileOrDirectory) => {
     const currentIsDir = await fs.lstat(fileOrDirectory).then(d => d.isDirectory())
 
     return walk(fileOrDirectory, async (file) => {
@@ -77,4 +96,4 @@ const { walk, getOutputFilePath, configParser } = require('../lib/utils');
       });
     });
   }));
-})().catch(console.error);
+})().catch(e => console.error(`[Error] ${e.message}`));

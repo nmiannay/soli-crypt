@@ -3,42 +3,45 @@ const fs = require('fs').promises;
 const yargs = require('yargs');
 const generateKeys = require('../lib/generateKeys');
 const { configParser } = require('../lib/utils');
-const { DEFAULT_WORDS_LIST_PATH } = require('../lib/constants');
+const { DEFAULT_WORDLIST_PATH } = require('../lib/constants');
 
 const argv = yargs
+  .usage('$0\n\nGenerate encryption key pair and memoized share files')
   .option('wordlist', {
     alias: 'w',
-    description: 'The path to world list used to memoize passphrase',
+    description: 'Path to worldlist used to memoize passphrase',
     type: 'string',
-    default: DEFAULT_WORDS_LIST_PATH,
+    default: DEFAULT_WORDLIST_PATH,
     coerce: configParser
   })
   .option('shares', {
     alias: 's',
-    description: 'The number of n shares that should be created for this secret',
+    description: 'Number of n shares that should be created for this secret',
     type: 'number',
     default: 6,
   })
   .option('threshold', {
     alias: 't',
-    description: 'The number of t of n distinct share that are required to reconstruct this secret',
+    description: 'Number of t of n distinct share that are required to reconstruct this secret',
     type: 'number',
     default: 5,
   })
   .option('keySize', {
     alias: 'k',
-    description: 'The size of randomly generated passphrase',
+    description: 'Size of randomly generated passphrase',
     type: 'number',
     default: 256,
   })
   .option('output', {
     alias: 'o',
-    description: 'The path to store generated files',
+    description: 'Path to store generated files',
     type: 'string',
     default: process.cwd(),
   })
   .help()
   .alias('help', 'h')
+  .version(false)
+  .strict()
   .argv;
 
 (async function main() {
@@ -55,4 +58,4 @@ const argv = yargs
     fs.writeFile(path.join(argv.output, 'id_rsa'), privateKey),
     ...splits.map((split, index) => fs.writeFile(path.join(argv.output, `share-${index}.memo`), split.join(' '))),
   ]);
-})();
+})().catch(e => console.error(`[Error] ${e.message}`));

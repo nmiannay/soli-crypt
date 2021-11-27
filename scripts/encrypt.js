@@ -7,18 +7,14 @@ const { walk, getOutputFilePath, configParser } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
+  .usage('$0 -k <public-key> <file> [...<file>]\n\nEncrypt a file or folder')
   .option('public-key', {
     alias: 'k',
     description: 'The path to public key',
     type: 'string',
     required: true,
+    demandOption: true,
     coerce: fs.readFile,
-  })
-  .option('file', {
-    alias: 'f',
-    description: 'Paths to file or folder to encrypt',
-    type: 'array',
-    required: true,
   })
   .option('output', {
     alias: 'o',
@@ -39,12 +35,31 @@ const { walk, getOutputFilePath, configParser } = require('../lib/utils');
   })
   .help()
   .alias('help', 'h')
-  .strict()
+  .version(false)
+  .strictOptions()
+  .check(async (argv) => {
+    if (!argv._.length && process.stdin.isTTY) {
+      throw new Error('You must give at least 1 file');
+    } else if (!process.stdin.isTTY && !await fs.lstat(argv.output).then(d => d.isFile()).catch((e) => e.code === 'ENOENT')) {
+      throw new Error('Output must be a file when used with stdin');
+    }
+    return true;
+  })
   .argv;
+
+  if (!process.stdin.isTTY) {
+    await fs.mkdir(path.dirname(argv.output), { recursive: true }); // create directory structure
+
+    return encrypt(
+      process.stdin,
+      createWriteStream(argv.output, { start: HEADER_LENGTH }),
+      argv['public-key']
+    );
+  }
 
   const outputIsDir = argv.output && await fs.lstat(argv.output).then(d => d.isDirectory()).catch(() => false);
 
-  return Promise.all(argv.file.map(async (fileOrDirectory) => {
+  return Promise.all(argv._.map(async (fileOrDirectory) => {
     const currentIsDir = await fs.lstat(fileOrDirectory).then(d => d.isDirectory())
 
     return walk(fileOrDirectory, async (file) => {
@@ -54,11 +69,11 @@ const { walk, getOutputFilePath, configParser } = require('../lib/utils');
         await fs.mkdir(path.dirname(outputPath), { recursive: true });
       }
 
-      const readStream = createReadStream(file);
-      const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
-      const header = await encrypt(readStream, writeStream, argv['public-key']);
-
-      return fs.writeFile(outputPath, header, { flag: 'r+' });
+      return encrypt(
+        createReadStream(file),
+        createWriteStream(outputPath, { start: HEADER_LENGTH }),
+        argv['public-key']
+      );
     });
   }));
-})();
+})().catch(e => console.error(`[Error] ${e.message}`));

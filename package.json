@@ -1,7 +1,7 @@
 {
   "name": "soli-crypt",
   "version": "1.0.0",
-  "description": "Encrypt your files and securly share decryption key",
+  "description": "Encrypt your files and securely share decryption key.",
   "author": "Nicolas Miannay",
   "license": "MIT",
   "private": true,
