@@ -6,7 +6,6 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "bip39": "^3.0.3",
     "shamirs-secret-sharing": "^1.0.1",
     "yargs": "^17.2.1"
   },
