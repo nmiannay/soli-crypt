@@ -1,0 +1,14 @@
+{
+  "encrypt": {
+    "public-key": ".out/id_rsa.pub"
+  },
+  "decrypt": {
+    "private-key": ".out/id_rsa",
+    "share": [
+      ".out/share-0.memo",
+      ".out/share-1.memo",
+      ".out/share-2.memo"
+    ],
+    "output": ".out"
+  }
+}

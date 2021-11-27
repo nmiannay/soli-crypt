@@ -6,5 +6,6 @@
 !package.json
 !yarn.lock
 !words.json
+!config.sample.json
 !scripts
 !lib

@@ -3,7 +3,7 @@ const yargs = require('yargs');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
 const decrypt = require('../lib/decrypt');
 const { DEFAULT_PLAIN_SUFFIX, DEFAULT_WORDS_LIST_PATH } = require('../lib/constants');
-const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils');
+const { walk, getOutputFolderPath, getOutputFilePath, configParser } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
@@ -12,14 +12,14 @@ const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils')
     description: 'The path to world list used to memoize passphrase',
     type: 'string',
     default: DEFAULT_WORDS_LIST_PATH,
-    coerce: require,
+    coerce: configParser,
   })
   .option('private-key', {
     alias: 'k',
     description: 'The path to private key',
     type: 'string',
     required: true,
-    coerce: async (path) => await fs.readFile(path),
+    coerce: fs.readFile,
   })
   .option('file', {
     alias: 'f',
@@ -36,7 +36,7 @@ const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils')
     description: 'The path to share file',
     type: 'array',
     required: true,
-    coerce: async (splits) => await Promise.all(
+    coerce: async (splits = []) => Promise.all(
       splits.map(s => fs.readFile(s).then(buff => buff.toString().split(' ')))
     ),   
   })
@@ -44,6 +44,12 @@ const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils')
     description: 'The suffix added to encrypted file',
     type: 'string',
     default: DEFAULT_PLAIN_SUFFIX,
+  })
+  .option('config', {
+    alias: 'c',
+    description: 'The path to config file',
+    config: true,
+    configParser: configPath => configParser(configPath).decrypt || {}
   })
   .help()
   .alias('help', 'h')

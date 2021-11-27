@@ -1,14 +1,17 @@
+const path = require('path');
 const fs = require('fs').promises;
-const generateKeys = require('../lib/generateKeys');
 const yargs = require('yargs');
+const generateKeys = require('../lib/generateKeys');
+const { configParser } = require('../lib/utils');
+const { DEFAULT_WORDS_LIST_PATH } = require('../lib/constants');
 
 const argv = yargs
   .option('wordlist', {
     alias: 'w',
     description: 'The path to world list used to memoize passphrase',
     type: 'string',
-    default: '../words.json',
-    coerce: require
+    default: DEFAULT_WORDS_LIST_PATH,
+    coerce: configParser
   })
   .option('shares', {
     alias: 's',
@@ -32,11 +35,7 @@ const argv = yargs
     alias: 'o',
     description: 'The path to store generated files',
     type: 'string',
-    default: '/tmp',
-  })
-  .option('rm', {
-    description: 'Remove preivously generated folder',
-    type: 'boolean',
+    default: process.cwd(),
   })
   .help()
   .alias('help', 'h')
@@ -50,13 +49,10 @@ const argv = yargs
     keySize: argv.keySize
   });
 
-  if (argv.rm === true) {
-    await fs.rmdir(argv.output, { recursive: true }); // remove previous generated keys
-  }
   await fs.mkdir(argv.output, { recursive: true }); // create directory structure
   await Promise.all([
-    fs.writeFile(`${argv.output}/id_rsa.pub`, publicKey),
-    fs.writeFile(`${argv.output}/id_rsa`, privateKey),
-    ...splits.map((split, index) => fs.writeFile(`${argv.output}/share-${index}.memo`, split.join(' '))),
+    fs.writeFile(path.join(argv.output, 'id_rsa.pub'), publicKey),
+    fs.writeFile(path.join(argv.output, 'id_rsa'), privateKey),
+    ...splits.map((split, index) => fs.writeFile(path.join(argv.output, `share-${index}.memo`), split.join(' '))),
   ]);
 })();

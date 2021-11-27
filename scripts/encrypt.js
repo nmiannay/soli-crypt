@@ -3,7 +3,7 @@ const path = require('path');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
 const { HEADER_LENGTH, DEFAULT_ENCRYPT_SUFFIX } = require('../lib/constants');
 const encrypt = require('../lib/encrypt');
-const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils');
+const { walk, getOutputFolderPath, getOutputFilePath, configParser } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
@@ -12,7 +12,7 @@ const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils')
     description: 'The path to public key',
     type: 'string',
     required: true,
-    coerce: async (path) => await fs.readFile(path),
+    coerce: fs.readFile,
   })
   .option('file', {
     alias: 'f',
@@ -28,6 +28,12 @@ const { walk, getOutputFolderPath, getOutputFilePath } = require('../lib/utils')
     description: 'The suffix added to encrypted file',
     type: 'string',
     default: DEFAULT_ENCRYPT_SUFFIX,
+  })
+  .option('config', {
+    alias: 'c',
+    description: 'The path to config file',
+    config: true,
+    configParser: configPath => configParser(configPath).encrypt || {}
   })
   .help()
   .alias('help', 'h')
