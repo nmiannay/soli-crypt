@@ -3,7 +3,7 @@ const path = require('path');
 const { promises: fs , createReadStream, createWriteStream } = require('fs');
 const { HEADER_LENGTH, DEFAULT_ENCRYPT_SUFFIX } = require('../lib/constants');
 const encrypt = require('../lib/encrypt');
-const { walk, getOutputFolderPath, getOutputFilePath, configParser } = require('../lib/utils');
+const { walk, getOutputFilePath, configParser } = require('../lib/utils');
 
 (async function main() {
   const argv = await yargs
@@ -16,13 +16,15 @@ const { walk, getOutputFolderPath, getOutputFilePath, configParser } = require('
   })
   .option('file', {
     alias: 'f',
-    description: 'The path to file or folder to encrypt',
-    type: 'string',
+    description: 'Paths to file or folder to encrypt',
+    type: 'array',
+    required: true,
   })
   .option('output', {
     alias: 'o',
     description: 'The path to store generated file',
     type: 'string',
+    //must be a folder or not existing if file.length > 1
   })
   .option('suffix', {
     description: 'The suffix added to encrypted file',
@@ -37,23 +39,26 @@ const { walk, getOutputFolderPath, getOutputFilePath, configParser } = require('
   })
   .help()
   .alias('help', 'h')
+  .strict()
   .argv;
 
-  const outputFolderPath = await getOutputFolderPath(argv.file, argv.output, argv.suffix);
+  const outputIsDir = argv.output && await fs.lstat(argv.output).then(d => d.isDirectory()).catch(() => false);
 
-  await walk(argv.file, async (file) => {
-    const outputPath = getOutputFilePath(outputFolderPath, file, argv);
+  return Promise.all(argv.file.map(async (fileOrDirectory) => {
+    const currentIsDir = await fs.lstat(fileOrDirectory).then(d => d.isDirectory())
 
-    if (outputFolderPath !== null) { // create directory structure
-      await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    }
+    return walk(fileOrDirectory, async (file) => {
+      const outputPath = getOutputFilePath(argv.output, file, outputIsDir || currentIsDir, argv.suffix);
 
-    const readStream = createReadStream(file);
-    const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
-    const header = await encrypt(readStream, writeStream, argv['public-key']);
-    const fd = await fs.open(outputPath, 'r+');
+      if (argv.output) { // create directory structure
+        await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      }
 
-    await fd.write(header, 0);
-    await fd.close();
-  });
+      const readStream = createReadStream(file);
+      const writeStream = createWriteStream(outputPath, { start: HEADER_LENGTH });
+      const header = await encrypt(readStream, writeStream, argv['public-key']);
+
+      return fs.writeFile(outputPath, header, { flag: 'r+' });
+    });
+  }));
 })();
