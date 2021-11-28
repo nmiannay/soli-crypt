@@ -81,8 +81,14 @@ const { walk, getOutputFilePath, configParser } = require('../lib/utils');
     const currentIsDir = await fs.lstat(fileOrDirectory).then(d => d.isDirectory())
 
     return walk(fileOrDirectory, async (file) => {
-      const outputPath = getOutputFilePath(argv.output, file, outputIsDir || currentIsDir, argv.suffix);
+      const outputPath = getOutputFilePath(
+        argv.output,
+        currentIsDir ? path.relative(fileOrDirectory, file) : file,
+        outputIsDir || currentIsDir,
+        argv.suffix
+      );
 
+      console.log(`Decrypting file ${file} ... ${outputPath}`);
       if (argv.output) { // create directory structure
         await fs.mkdir(path.dirname(outputPath), { recursive: true });
       }

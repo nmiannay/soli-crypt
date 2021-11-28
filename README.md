@@ -76,6 +76,8 @@ docker run -i --rm -v $(pwd)/.out:/mount \
   soli-crypt decrypt -k /mount/keys/id_rsa -s /mount/keys/share-0.memo -s /mount/keys/share-1.memo -o /mount/out/mySecretFile < mySecretFile.crypted 
 ```
 
+> Use docker option `-i` if you want to use stdin, use docker option `-t` if you want to use mounted input file in your container
+
 ## Purpose
 
 I wanted to cypher sensitive files, but avoid as much as possible the risk of losing the private key.
